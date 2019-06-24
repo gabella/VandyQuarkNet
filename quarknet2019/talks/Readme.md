@@ -1,5 +1,5 @@
 # 2019 Vanderbilt QuarkNet Talks
-Monday and Tuesday, 24th and 25th of June 2019
+Monday and Tuesday, 24th and 25th of June 2019<\br>
 Schedule: 
 * 9:00-10:00am Event Horizon Telescope, Bill Gabella
 * 10:10-11:00am Particle Physics, Savannah Starko
