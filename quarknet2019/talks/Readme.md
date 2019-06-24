@@ -9,3 +9,15 @@ Schedule:
 * 2:40-3:40pm Pulsar Timing Array, Natasha McMann
 * 3:40-the end Discuss
 * Tuesday 9:00-10:00am LHC and Pixel Detector, Will Johns
+
+
+Contact info:
+Bill Gabella  bill.gabella@gmail.com
+
+Savannah Starko
+
+Kelly Holley-Bockelmann  kelly.gravity@gmail.com
+
+Natasha McMann
+
+
