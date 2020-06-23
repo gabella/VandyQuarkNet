@@ -18,5 +18,5 @@ A good guess is that the area under this curve is proportional to the total ener
 fluor in the scintillator plastic.
 
 **waves75to80.png** really has trace number 75 only.<br>
-<img src = "savesets200620_185602/waves75to80.png" alt="scope trace 76">
+<img src = "savesets200620_185602/waves75to80.png" alt="scope trace 76" width="800">
 
