@@ -1,0 +1,7 @@
+20200622 weg
+
+  Saved waveforms on the Tek TDS5000 with -100mV negative edge trigger
+(not -300mV).  Still S/N 6165 ch4 after the PMT and cable.  Collected in
+file 200620_184104.csv .
+
+
