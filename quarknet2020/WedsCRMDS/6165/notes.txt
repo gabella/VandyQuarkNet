@@ -1,0 +1,24 @@
+20200623 weg
+
+  Date files for CRMD s/n 6165 for the last weeks with different configurations/geometries.
+EQUIP_8JUN2020_130712 has the nominal geometry, 12 (top) the 34 (bottom) .
+
+EQUIP_17JUN2020_105422 has vertical geometry with 2 (large gap) 134 (bottom), to check 1 and 3's timing.
+Two hours of data. As of 1246 on 17 June 2020 moved to 32___14.
+
+EQUIP_17JUN2020_124637.txt is 32___14 geometry.
+
+EQUIP_20JUN2020_181313 is vertial with swapped,  32 (top) (large gap) 14 (bottom).
+
+
+  To generate the CSV file see hits_src, especially ~/bin/hitsBill on his
+laptop.  Run it like
+hitsBill 1 <equip file name>
+generates a muspeed.csv file with the rise and falling edges in "ticks."
+Rename the file to associate it with the Equip / data file.
+
+  Lab book page 11, 17 June 2020, distance between 1 and 3 is measured as
+78 13/16" - 6 7/16" , for S/N 6165 vertical on teh steel shelves, (top) 12
+gap to 34 (bottom).
+
+
