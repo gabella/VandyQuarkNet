@@ -1,7 +1,7 @@
 # Copies of talks from the workshop
 
 * **Monday**
-  * Gabella, Introductions, Administration, and General Physics News
+  * Gabella, Welcome, Administration, and General Physics News
   * Johns, What's going on for Vandy HEP at CERN?
   * Taylor, Pulsar Timing Arrays: The Next Window Onto the Warped Universe
 * **Tuesday**
