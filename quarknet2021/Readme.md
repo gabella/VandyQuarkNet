@@ -1,4 +1,13 @@
-**Vanderbilt-QuarkNet Workshop 2021**
+# Talks from the Vanderbilt-QuarkNet 2021 Workshop
 
-Talks and Data and Pictures
-
+**Short Agenda**, in-person meeting
+* **Monday**
+  * Talks, Gabella, Johns, Julson, Dabbieri, Gabella
+* **Tuesday**
+  * Cosmic Ray Muon Detector speed-of-"light," using spreadsheets
+* **Wednesday**
+  * Coding Workshop
+* **Thursday**
+  * Coding Workshop and CMS Activities
+* **Friday**
+  * Coding, cloud chambers, debrief, implementation plans
