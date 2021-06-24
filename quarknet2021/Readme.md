@@ -1,5 +1,10 @@
 # Talks from the Vanderbilt-QuarkNet 2021 Workshop
 
+Google Docs with the agenda:<br>
+[Vanderbilt QuarkNet Workshop 2021](https://docs.google.com/document/d/1DLfhfgFWIlis2KJ2rGPzxUisETa-4zr6vBvF-iUP9W0/edit?usp=sharing)<br>
+and<br>
+[Vanderbilt QuarkNet Coding Agenda 2-Day](https://docs.google.com/document/d/1DLfhfgFWIlis2KJ2rGPzxUisETa-4zr6vBvF-iUP9W0/edit?usp=sharing)<br>
+
 **Short Agenda**, in-person meeting
 * **Monday**
   * Talks, Gabella, Johns, Julson, Dabbieri, Gabella
