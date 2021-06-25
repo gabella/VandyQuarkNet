@@ -23,4 +23,4 @@ We setup about 283.5" from the South edge of the service elevator.  Our telescop
 
 Had a little spill returning the car to the 9th floor.  So took another set of data (one power line pulled out of the PDU).<br>
 * 9th Floor, EQUIP_25JUN2021_114413.txt<br>
-* 9th Floor w/ GPS, EQUIP_25JUN2021_115733.txt<br>
+* 9th Floor w/ GPS, EQUIP_25JUN2021_115733.txt and created muspeed_25JUN2021_115733.csv for ease of counting or timing of hits.<br>
