@@ -1,0 +1,20 @@
+20200623 weg
+
+  Tried to compile and cannot with
+gfortran -std=legacy -ohits hitsmp.f hitsaux.f fakehbk.f
+and not without the -std switch.
+
+hitsBill 1 <equip file>
+does seem to work still.
+
+20210705 weg
+  Did compile the code with new gfortran, but commented out the
+line around hitsmp.f line 212, the read(bufin...)iba.  The ida
+variable seems not to be used for anything.  Maybe in shower mode.
+
+c        write(6,*)'**',bufin(1:10)  ! Debug, was commented out, beg.
+c        read(bufin(3:nchar),*)iba  ! This read ignores ^M, BEG commented this out.  Not used.
+c        write(6,*)iba  ! beg 6-output, 5-input
+        ncount(15)=ncount(15)+1
+        read (2,1000,err=900,end=901)bufin
+

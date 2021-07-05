@@ -1,0 +1,773 @@
+c prog to read data files written by Purdue QN counter control program
+c Compile with the make file to use the CERN (32 bit) libraries or dummy
+c out the hbook calls anddo simple (no plots) fortran version.
+c f77 -ohits hitsmp.f hitsaux.f fakehbk.f
+c     
+      include 'com_mp.inc'
+      include 'com_multilines.inc'
+      character*80 fullf
+      character*12 serial
+      character*1 stcom
+      character*1 ctm
+      equivalence (ictm,ctm)
+      data ictm/13/
+c      data fullf /'junkjj.txt'/
+c      data fullf /'/home/msw/qnet/EQUIP_23FEB2015_093523.txt'/
+      data fullf/
+     & '/net/vpac08/hd1/webstems/qnet/EQUIP_23FEB2015_093523.txt'/
+c
+      bufin=' '
+      Call ctime(time8(),timedate)
+      numarg = iargc()
+      If (numarg.lt.1 .or.numarg.gt.2) Then
+        write(6,*)'Correct usage is file name'
+        Call exit(2)
+      Endif
+      Call getarg(1,bufin)
+      read(bufin(1:1),2999)kfiles
+ 2999 format(i1)
+      if(numarg.eq.2)then
+        Call getarg(2,bufin)
+        nce=lnblnk(bufin)
+        fullf=' '
+        if(bufin(1:1).eq.'_')then   ! storage on vpac08 scratch disk
+          fullf(1:35)='/net/vpac08/media/bk/webstems/qnet/'
+          ncs=2
+          nws=36
+        else if (bufin(1:1).eq.'#')then ! storage not backed up at home
+          fullf(1:15)='/home/msw/qnet/'
+          ncs=2
+          nws=16
+        else
+          ncs=1
+          nws=1
+        end if
+        nwe=nws+nce-1
+        fullf(nws:nwe)=bufin(ncs:nce)
+      end if 
+ 3000 format(' QN hit analysis program run at: ',a26,' on file '
+     & /a80)
+      write (6,3000)timedate,fullf
+      open(unit=2,file=fullf,status='old',form='formatted')
+      call hb_in 
+      call initial(kfiles)
+ 1000 format(a80)
+ 10   read(2,1000,err=900,end=901)bufin
+      nlines=nlines+1
+ 11   nchar=lnblnk(bufin)
+c  Digitizer lines are most common, so test first if this is digitizer line
+c  look for digitizer line: more than 42 char, last of 8 hex digits not
+c  blank, and chr 9,12,15,18..33 are blank
+      if (nchar.ge.42 .and. bufin(8:8).ne.' ' .and. bufin(9:9).eq.' '
+     & .and. bufin(12:12).eq.' ' .and. bufin(15:15).eq.' ')then
+        if(bufin(18:18).ne.' '.or.bufin(21:21).ne.' '.or.bufin(33:33)
+     &      .ne.' ')then
+          ncount(ncntrs-1)=ncount(ncntrs-1)+1
+          write(6,*)'error on blanks in hits line'
+          write(6,*)bufin(1:nchar-2)
+        end if
+ 500    format(z2)
+        read(bufin(10:11),500)n
+        if(n.gt.63)then  !new coincidence flag is in top 2 bits
+          if(lbuf.gt.0)then
+c  start of data from a new coincidence, analyze previous coincidence
+c  which is in the bufs array.  The first line of the new coincidence is in
+c  bufin.
+            call coinc
+            nbufh(lbuf)=nbufh(lbuf)+1  ! histogram lines per hit
+            ncount(1)=ncount(1)+1  ! counts recorded events
+            lbuf=0
+            call refine
+            call spanfill
+          end if
+        end if
+        lbuf=lbuf+1
+        if(lbuf.gt.20)lbuf=20
+        bufs(lbuf)=bufin
+        nchars(lbuf)=nchar
+        ncount(2)=ncount(2)+1
+        go to 10
+      end if
+c DS Scalar read  3-5
+      if(bufin(1:2).eq.'DS')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of DS command sent from computer
+          ncount(3)=ncount(3)+1
+          write(6,*)'scaler read request at line ',nlines
+          go to 10
+        else if(nchar.eq.3 .or. nchar.eq.2)then
+c one ct M character - acknowledge DS command sent from computer
+          ncount(4)=ncount(4)+1
+          write(6,*)'acknowledge scaler read request at line ',nlines
+          go to 10
+        end if
+        ncount(5)=ncount(5)+1
+c  Two forms are supported:
+c DS 00001583 000012F2 00002FA5 0000440C 0000006A
+c DS S0=00D38529 S1=00B92607 S2=0138C0EA S3=02A5452F S4=000445A4 S5=C6EBCCBD
+c an older form with each register on succeeding lines is not supported
+c        write(6,*)nchar,' |',bufin(1:40),' |'
+        if(nchar.ne.48 .and. nchar.ne.75)then
+          write(6,*)'Bad Scalers with ',nchar,' at line ',nlines
+          write(6,*)bufin(1:50)
+          go to 10
+        end if
+        call sclfill
+        go to 10
+      end if
+c ST status line  6-8 Reads status line and scalar read instructions are
+c   modes of status set up
+      if(bufin(1:2).eq.'ST')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of ST command sent from computer
+          ncount(6)=ncount(6)+1
+          write(6,*)'status read request at line ',nlines
+          go to 10
+        else if(nchar.eq.3)then
+c one ct M character - acknowledge status request
+          ncount(7)=ncount(7)+1
+          write(6,*)'acknowledge status read request at line ',nlines
+          go to 10
+        end if
+        if(bufin(4:5).eq.'En' .or. bufin(4:5).eq.'Di')then
+c response to set status mode command
+          write(6,*)bufin(1:nchar-1)
+          ncount(7)=ncount(7)+1
+          go to 10
+        end if
+        if(nchar.lt.15 .and. bufin(5:5).eq.' ')then
+c  status set command
+          ncount(7)=ncount(7)+1
+          write(6,*)bufin(1:nchar-2)
+          read(bufin(4:4),997)stcom
+ 997      format(a1)
+          if(stcom.eq.'2')then
+            reset=.false.
+            write(6,*)'scalar read is in accumulating mode'
+          else if(stcom.eq.'3')then
+            reset=.true.
+            write(6,*)'scalar read is in reset mode'
+          else
+            write(6,*)'Status write enabled or disabled'
+          end if
+          go to 10
+        end if
+c  must be status data if passed preceeding tests
+        if(nchar.ne.78)write(6,*)nchar,' |',bufin(1:nchar)
+        ncount(8)=ncount(8)+1
+        call status
+        go to 10
+      end if
+c DG 9 look for GPS data. Always get DG with two ctl M and then a
+c line of DG with one ctl M. 
+      if(bufin(1:2).eq.'DG')then
+        write(6,*)'GPS read at line ',nlines
+        call gpsread
+c  ncount 9 is incremented in gpsread
+        go to 10
+      end if
+c TL 10  look for thresholds line
+      if(bufin(1:2).eq.'TL')then
+        write(6,*)'Thresholds set or read ',(bufin(j:j),j=1,nchar)
+        ncount(10)=ncount(10)+1
+        go to 10
+      end if
+c  11 check if this is blank line
+      if (nchar.le.0)then
+        ncount(11)=ncount(11)+1
+        go to 10
+      end if
+c CD  12  Pause data taking
+      if(bufin(1:2).eq.'CD')then
+        write(6,*)'Pause Data taking  ',nlines
+        ncount(12)=ncount(12)+1
+        go to 10
+      end if
+c CE 13  Resume data taking
+      if(bufin(1:2).eq.'CE')then
+c        write(6,*)'Resume Data taking  ',nlines
+        ncount(13)=ncount(13)+1
+        go to 10
+      end if
+c  BA   (14-16)  line
+      if(bufin(1:2).eq.'BA')then  ! 3 cases: BA and 2 ^M is echo of manually
+c  issued BA command.  BA, blank, 3 or 4 digits, 2 ^m is part of status
+c  operation or response to BA command.  Third possibility is a lecture on
+c  calibrating the barometer 
+        if(nchar.eq.4)then
+c  two ct M characters - echo of BA command sent from computer
+          ncount(14)=ncount(14)+1
+          write(6,*)'Barometer request at line ',nlines
+          go to 10
+        end if
+c  must be  barometer data line
+ 69     continue
+c        if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+c        if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+c        write(6,*)'**',bufin(1:10)
+        read(bufin(3:nchar),*)iba  ! This read ignores ^M
+        ncount(15)=ncount(15)+1
+        read (2,1000,err=900,end=901)bufin
+        nlines=nlines+1
+        nchar=lnblnk(bufin)
+c  BA is legitimate hex in start of digitizer line so check length too
+        if(bufin(1:2).eq.'BA' .and. nchar.le.20)then
+          ncount(16)=ncount(16)+1
+          go to 69
+        else if(bufin(1:4).eq.' Adj')then  !calibration lecture
+          if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+          if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+c          write (6,*)'Second BA gave',iba,' followed by:'
+c          write(6,*)bufin(1:nchar)
+          read (2,1000,err=900,end=901)bufin
+          nlines=nlines+1
+          nchar=lnblnk(bufin)
+          if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+          if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+          go to 10
+        else
+          go to 11
+        end if                
+      end if
+c  DC  17,18  line
+      if(bufin(1:2).eq.'DC')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of DC command sent from computer
+          ncount(17)=ncount(17)+1
+          write(6,*)'DC read request at line ',nlines
+          go to 10
+        end if
+c  must be DC data
+        if(nchar.ne.27)write(6,*)nchar,' |',bufin(1:nchar)
+        ncount(18)=ncount(18)+1
+        write(6,*)'DC report: ',bufin(1:nchar)
+        go to 10
+      end if
+c  DT  19,20  line
+      if(bufin(1:2).eq.'DT')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of DT command sent from computer
+          ncount(19)=ncount(19)+1
+          write(6,*)'DT read request at line ',nlines
+          go to 10
+        end if
+c  must be DT data
+        if(nchar.ne.27)write(6,*)nchar,' |',bufin(1:nchar)
+        ncount(20)=ncount(20)+1
+        write(6,*)'DT report: ',bufin(1:nchar)
+        go to 10
+      end if
+c  WC 21 command  reports registers
+      if(bufin(1:2).eq.'WC')then
+        ncount(21)=ncount(21)+1
+        if(bufin(6:6).eq.' ') then
+          Write(6,*)'WC command line: ',bufin(1:nchar-2)
+        else
+          Write(6,*)'WC read back: ',bufin(1:nchar-1)
+        end if
+        go to 10
+      end if
+c  WT 22 command  reports registers
+      if(bufin(1:2).eq.'WT')then
+        ncount(22)=ncount(22)+1
+        if(bufin(6:6).eq.' ') then
+          Write(6,*)'WT command line: ',bufin(1:nchar-2)
+        else
+          Write(6,*)'WT read back: ',bufin(1:nchar-1)
+        end if
+        go to 10
+      end if
+c  TH 23,24 temperature line
+      if(bufin(1:2).eq.'TH')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of TH command sent from computer
+          ncount(23)=ncount(23)+1
+          write(6,*)'TH read request at line ',nlines
+          go to 10
+        end if
+c  must be TH data
+        if(nchar.ne.27)write(6,*)nchar,' |',bufin(1:nchar)
+        ncount(24)=ncount(24)+1
+        write(6,*)'TH report: ',bufin(1:nchar)
+        go to 10
+      end if
+c  RB 25 command  resets scalers and maybe more?
+      if(bufin(1:2).eq.'RB')then
+        ncount(25)=ncount(25)+1
+        Write(6,*)'RB line: ',bufin(1:nchar-2)
+        go to 10
+      end if
+c SN 26  serial number of card
+      if(bufin(1:2).eq.'SN')then
+        ncount(26)=ncount(26)+1
+        read(2,1000,err=900,end=901)bufin
+        nchar=lnblnk(bufin)
+        nlines=nlines+1
+        Write(6,*)'SN line: ',bufin(1:nchar-1)
+        serial=bufin(9:12)
+        go to 10
+      end if
+c  V1  27 followed by 32 or 33lines 
+      if(bufin(1:2).eq.'V1')then
+        ncount(27)=ncount(27)+1
+        write(6,*)'V1 command at line ',nlines
+        do j=1,32
+          read(2,1000,err=900,end=901)bufin
+        end do
+        nlines=nlines+32
+        if(bufin(25:38).eq.'Pipeline Delay')then
+c  | Setup CMD sequence for Pipeline Delay.  starts next to last line of V1
+          read(2,1000,err=900,end=901)bufin
+          nlines=nlines+1
+        end if
+        nchar=lnblnk(bufin)
+        Write(6,*)'V1 last line: ',bufin(1:nchar-2)
+        go to 10
+      end if
+c  V2 28  followed by 18 lines
+      if(bufin(1:2).eq.'V2')then
+        ncount(28)=ncount(28)+1
+        write(6,*)'V2 command at line ',nlines,' Last two lines:'
+        nlines=nlines+19
+        do j=1,19
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          if(nchar.gt.1)nchar=nchar-1
+          if(j.ge.18)write(6,1001)nchar,(bufin(k:k),k=1,nchar)
+        end do
+        go to 10
+ 1001   format(i4,' ch ',80a1)
+      end if
+c  V3 29 followed by 23 lines
+      if(bufin(1:2).eq.'V3')then
+        ncount(29)=ncount(29)+1
+        write(6,*)'V3 command at line ',nlines
+        nlines=nlines+23
+        do j=1,23
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          if(nchar.gt.1)nchar=nchar-1
+          if(j.ge.21)write(6,1001)nchar,(bufin(k:k),k=1,nchar)
+        end do
+        go to 10
+      end if
+c H1 30  The EQUIP files all start with H1
+      if(bufin(1:2).eq.'H1')then
+        write(6,*)' H1 at ',nlines
+        ncount(30)=ncount(30)+1
+        do j=1,2    ! print our serial number
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          write(6,*)nchar,' |',bufin(1:50)
+        end do
+        serial=bufin(1:12)
+        do j=3,20
+          read(2,1000,err=900,end=901)bufin
+c          nchar=lnblnk(bufin)
+c          write(6,*)nchar,' |',bufin(1:50)
+        end do
+        nchar=lnblnk(bufin) ! write last line
+        if(nchar.gt.1)nchar=nchar-1
+        write(6,*)'Last line of H1'
+        write(6,*) nchar,' |',(bufin(j:j),j=1,nchar)
+        nlines=nlines+20
+        go to 10
+      end if
+c H2   31  has 32 lines
+      if(bufin(1:2).eq.'H2')then
+        ncount(31)=ncount(31)+1
+        Write(6,*)'H2 at line',nlines
+        do j=1,32
+          read(2,1000,err=900,end=901)bufin
+c          nchar=lnblnk(bufin)
+c          write(6,*)nchar,' |',bufin(1:50)
+        end do
+        nchar=lnblnk(bufin) ! write last line
+        if(nchar.gt.1)nchar=nchar-1
+        write(6,*)'Last line of H2'
+        write(6,*) nchar,' |',(bufin(j:j),j=1,nchar)
+        nlines=nlines+32
+        go to 10
+      end if
+c  HB 32  followed by 2 lines
+      if(bufin(1:2).eq.'HB')then
+        ncount(32)=ncount(32)+1
+        write(6,*)'HB command at line ',nlines
+        nlines=nlines+2
+        do j=1,2
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          if(nchar.gt.1)nchar=nchar-1
+          write(6,1001)nchar,(bufin(kk:kk),kk=1,nchar)
+        end do
+        go to 10
+      end if
+c  HS  33  followed by 27 lines
+      if(bufin(1:2).eq.'HS')then
+        ncount(33)=ncount(33)+1
+        write(6,*)'HS command at line ',nlines
+        nlines=nlines+27
+        do j=1,27
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          if(nchar.gt.1)nchar=nchar-1
+          if(j.ge.26)write(6,1001)nchar,(bufin(kk:kk),kk=1,nchar)
+        end do
+        go to 10
+      end if
+c  HT  34  followed by 31 lines
+      if(bufin(1:2).eq.'HT')then
+        ncount(34)=ncount(34)+1
+        write(6,*)'HT command (First sighting) at line ',nlines
+        nlines=nlines+31
+        do j=1,31
+          read(2,1000,err=900,end=901)bufin
+          nchar=lnblnk(bufin)
+          if(nchar.gt.1)nchar=nchar-1
+          if(nchar.gt.2)write(6,1001)nchar,(bufin(kk:kk),kk=1,nchar)
+        end do
+        go to 10
+      end if
+c TI 35,36  time report
+      if(bufin(1:2).eq.'TI')then
+        if(nchar.eq.4)then
+c  two ct M characters - echo of TI command sent from computer
+          ncount(35)=ncount(35)+1
+          write(6,*)'time read request at line ',nlines
+          go to 10
+        end if
+c  must be time report
+        ncount(36)=ncount(36)+1
+        write(6,*)'Time report at line ',nlines,'  ',bufin(1:nchar-1)
+        go to 10
+      end if
+c  SA  35  followed by 1 line
+      if(bufin(1:4).eq.'SA 1')then
+        ncount(37)=ncount(37)+1
+        write(6,*)'SA Save command at line ',nlines
+        nlines=nlines+1
+        read(2,1000,err=900,end=901)bufin
+        nchar=lnblnk(bufin)
+        if(nchar.gt.1)nchar=nchar-1
+        write(6,1001)nchar,(bufin(kk:kk),kk=1,nchar)
+        go to 10
+      end if
+      if(bufin(1:5).eq.'zzzzz')then
+        write(6,*)'Found line zzzzz - artificial EOF'
+        go to 902
+      end if
+      ncount(ncntrs)=ncount(ncntrs)+1
+      write(6,*)'Unprogrammed type line characters, line ',nchar,nlines
+      if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+      if(bufin(nchar:nchar).eq.ctm)nchar=nchar-1
+      write(6,*)' |',(bufin(j:j),j=1,nchar),'|'
+      go to 10
+ 900  write (6,*) 'Read error on line  ',nlines+1
+      go to 902
+ 901  write (6,*) 'EOF after line  ',nlines
+ 902  if(lbuf.gt.0) then
+        write(6,*)'Process last event.'
+        call coinc !process last event
+        nbufh(lbuf)=nbufh(lbuf)+1  ! histogram lines per hit
+        ncount(1)=ncount(1)+1  ! counts recorded events
+        call refine
+        call spanfill
+      end if
+      write (6,9000) nlines,(ncount(j),j=1,25)
+      write (6,9001)(ncount(j),j=26,ncntrs-4)
+      write (6,9010)(ncount(j),j=ncntrs-3,ncntrs),nbufh
+ 9000 format('Lines read'  ,i8/
+     &'Coinc, Digititizer Lines',2i8/'Scaler lines(ncount 3-5)',3i8/
+     &'Status lines (ST  6-8)  ',3i8/'GPS reads (DG 9)        ',i8/
+     &'Thresh set, read (TL 10)',i8 /'Blank lines (11)        ',i8/
+     &'CD and CE lines  (12,13)',2i8/'BA lines  (14-16)       ',3i8/
+     &'DC lines  (17,18)       ',2i8/'DT lines  (19,20)       ',2i8/
+     &'WC lines  (21)          ',i8 /'WT lines  (22)          ',i8/
+     &'TH lines  (23,24)       ',2i8/'RB lines  (25)          ',i8)
+ 9001 format(
+     &'SN line   (26)          ',i8 /'V1 lines  (27)          ',i8/
+     &'V2        (28)          ',i8 /'V3 and time diagram (29)',i8/
+     &'H1        (30)          ',i8 /'H2        (31)          ',i8/
+     &'HB        (32)          ',i8 /'HS        (33)          ',i8/
+     &'HT        (34)          ',i8 /'TI        (35,36)       ',2i8/
+     &'SA save   (37)          ',i8 /'Bad Fraction of second  ',i8/
+     &' Not used ',3i4)
+ 9010 format('GPS turn on, off ',2i8/
+     &'Blanks in Digitizer Line',i8/'Not programmed line(ncntrs=45)',i4/
+     &'  Histogram of digitizer lines per coincidence (1-20)'
+     & /8i8,2i6/8i8,2i6)
+      call statusend
+      call report
+      call spanout
+      call sclout
+      call hb_out
+      call ctime(time8(),timedate)
+      write(6,9011)serial,fullf
+      write(6,9012)timedate
+ 9011 format('Data taken by unit ',a12,' in file'/a80)
+ 9012 format('Program completed at :',a26)
+      stop
+      end
+      subroutine initial(k)
+      include 'com_mp.inc'
+      include 'com_multilines.inc'
+      include 'com_analysis.inc'
+      include 'com_results.inc'
+      include 'com_span.inc'
+c      write(6,2000)
+ 2000 format('Enter 0 to save neither file, 1 to save only speed, '/
+     & '2 to save only shower, or 3 to save both')
+      lgps=.true.
+      lspeed=.false.
+      lshower=.false.
+c      read(5,*)k
+      if(k.eq.1 .or. k.eq.3)lspeed=.true.
+      if(k.eq.2 .or. k.eq.3)lshower=.true.
+      if(lspeed)open(11,FILE='muspeed.csv',FORM='FORMATTED',
+     c   STATUS='UNKNOWN')
+      if(lshower)open(12,FILE='shower.txt',FORM='FORMATTED',
+     c   STATUS='UNKNOWN')      
+c initialization for common mp
+      reset=.true.  ! means that rate scalers are reset when read
+      nlines=0
+      do j=1,ncntrs     ! counters of various types on input
+        ncount(j)=0  ! see format of output in main program
+      end do
+      do j=1,20      ! Lines of output generated by one coincidence
+        nbufh(j)=0
+      end do
+      do j=1,4
+        pres(j)=0.    ! status line variables
+        degcpu(j)=0.  ! 1 and 2 are sum and sum of sq for ~hourly report
+        deggps(j)=0.  ! 3 and 4 are same for accumulating over run
+        volts(j)=0.   ! expected averages have been subtracted to improve
+      end do
+      pres(3)=1016.1  !13.2
+      degcpu(3)=230.4 !3.7
+      deggps(3)=73.7  !5.5
+      volts(3)=3315.3 !42.
+c initialization for common multilines
+      do j=1,20
+        nchars(j)=0
+      end do
+      lbuf=0
+c  mystery here  2**32 not same as (2**16)**2 ???????
+c  and straight forward irollov=z'FFFFFFFF'+1 does not work
+      irollov=(2**16)
+      irollov=(irollov**2)
+c initilization of com_analysis.inc
+      fnorm=2.5d7
+      fnormr=fnorm
+      nfreq=0
+      nbadf=0
+      avfreq=0.
+      abvfreq=0.
+      rmsfreq=0.
+c      write(6,1000)irollov,irollov,irollov+2,fnormr+1
+ 1000 format(i12,2z20,f20.1)
+      do j=1,8
+        multhit(j)=0
+      end do
+      do j=1,14
+        nsatb(j)=0
+        nsata(j)=0
+      end do
+      do j=1,3
+        do k=1,31
+          ndigst(j,k)=0
+        end do
+      end do
+c initislization of com_results.inc
+      do j=1,4
+        missf(j)=0
+        missl(j)=0
+        missmat(j)=0
+        mult(j)=0
+        msing(j)=0
+        mout(j)=0
+      end do
+      mult(5)=0
+      do j=1,6
+        itwo(j)=0
+      end do
+c initislization of com_span.inc
+c  nbegin, nend, nbegins, and nends are parameters defined in this common
+      locsp=1
+      do j=1,nend
+        nentsp(j)=0
+        ntsp(j)=0
+        nrdscsp(j)=0
+        mult3sp(j)=0
+        mult4sp(j)=0
+        ippd(1,j)=0
+        ipph(1,j)=0
+        ippd(2,j)=0
+        ipph(2,j)=0
+        spsec(1,j)=0
+        spsec(2,j)=0
+      end do
+      locsc=0
+      do j=1,nends
+        nentsc(j)=0
+        do k=1,5
+          iscs(k,j)=0
+        end do
+      end do
+      end
+      subroutine refine
+c  computes multiplicity, pulse widths, of a hit and contributes to histograms
+c  of event characteristics.  The input data is in icd and icds which are
+c filed in the routine coinc
+      include 'com_analysis.inc'
+      include 'com_results.inc'
+      dimension lt(4),itrig(4)
+      dimension ic(2,4),ics(2,4)
+      equivalence (ic(1,1),icd(1)),(ics(1,1),icds(1))
+      do j=1,4
+        if(icd(2*j-1).ge.0 .and. icd(2*j).lt.0)missf(j)=missf(j)+1
+        if(icd(2*j).ge.0 .and. icd(2*j-1).lt.0)missl(j)=missl(j)+1
+        if(icd(2*j).ge.0 .and. icd(2*j-1).ge.0 .and. icd(2*j-1)
+     &    .ge.icd(2*j))missmat(j)= missmat(j)+1
+      end do
+      do j=1,4
+        if(ic(1,j).eq.-1)then
+          lt(j)=5 ! code for no hit.  Time order 1-4 set below
+        else
+          lt(j)=6
+        end if
+      end do
+      do j=1,4
+        jtc=50000
+        do k=1,4  ! pick smallest time among those not yet ranked
+          if(lt(k).eq.6 .and. ic(1,k).le.jtc)then
+            jtc=ic(1,k)
+            kt=k
+          end if
+        end do
+c  5 means no hit and all 6s have been relaced by order
+        if(jtc.lt.50000)then
+          a=jtc+0.5
+          call hf1(j+15,a,1.)
+          lt(kt)=j
+        else
+          go to 12  ! because all hits have been ordered
+        end if
+      end do
+ 12   do j=1,4
+        a=10*j+lt(j)+0.5
+        call hf1(40,a,1.0)
+      end do
+c check multiplicity, missing leading , trailing edges, 
+      m=0
+      mm=5
+      ms=0
+      do j=1,4
+        if(ic(1,j)+ic(2,j).gt.-2)then
+          itrig(j)=1
+          ms=j
+          m=m+1
+          lt(m)=ic(1,j)
+        else
+          itrig(j)=0
+          mm=j
+        end if
+      end do
+      do j=1,4
+        if(ic(1,j)+ic(2,j).gt.-2)then
+          wid=ic(2,j)-ic(1,j)+0.5
+          call hf1(j,wid,1.)
+          if(wid.gt.100.)call hf1(j+25,wid,1.)
+          if(m.ge.3)call hf1(j+35,wid,1.)
+        end if
+c width of second pulse (tacit assumption that both rise and fall are there
+c  if either is, but few outliers in plot, so probably safe assumption.
+        if(ics(1,j)+ics(2,j).gt.-2)then
+          wid=ics(2,j)-ics(1,j)+0.5
+          call hf1(j+20,wid,1.)
+        end if
+      end do
+      if(lshower .and. m.ge.2 .and. lgps)
+     &        write(12,2001)idate,daysec,isat,m,iqual,icd
+ 2001 format(i8,f16.9,2i3,a1,8i5)
+c  plot time differences for use in velocity measurements
+      if(m.eq.4)then
+        if(lspeed)write(11,2000)idate,daysec,icd !write sprd sheet file
+ 2000 format(i8,',',f16.9,8(',',i5))
+        do j=1,3 
+          do k=j+1,4
+            if(ic(1,j).gt.-1 .and. ic(1,k).gt.-1)then
+              wid=ic(1,k)-ic(1,j)+0.5
+              call hf1(100*j+10*k,wid,1.)
+            end if
+          end do
+        end do
+      end if
+c--------------------------
+      mult(m+1)=mult(m+1)+1 ! array includes m=0
+      if(m.le.1)then
+        msing(ms+1)=msing(ms+1)+1
+      else
+        do j=1,m-1
+          do jj=j+1,m
+            if(lt(jj).lt.lt(j))then
+              lswap=lt(j)
+              lt(j)=lt(jj)
+              lt(jj)=lswap
+            end if
+          end do
+        end do
+        do j=2,m  ! plot time by which others lag first hit
+          del=lt(j)-lt(1)+0.5
+c  Look for pairs in tall telescope timing - typically get one of these
+c  per day with 171 cm separation, small telescope
+c          if(del.gt.11.0)write(6,1005)((ic(k,j),k=1,2),j=1,4),ipph,ppsec,
+c     &    ippdate,m
+          call hf1(j+9,del,1.)
+          if(del.gt.80.0)call hf1(j+319,del,1.)
+          if(del.lt.60.)call hf1(j+909,del,1.)
+          if(del.gt.300.)call hf1(j+309,del,1.)
+        end do
+c put exclusive 2-folds in fourth of series of histograms
+        if(m.eq.2)then
+          del=lt(2)-lt(1)+0.5
+          call hf1(14,del,1.)
+          if(del.gt.80.0)call hf1(324,del,1.)
+          if(del.lt.60.)call hf1(914,del,1.)
+          if(del.gt.300.)call hf1(314,del,1.)
+        end if
+        do j=1,4  ! plot time by which second hit lags first hit
+          if(ics(1,j).ge.0)then
+            del=ics(1,j)-lt(1)+0.5
+            call hf1(j+30,del,1.)
+            call hf1(j+50,del,1.)
+          end if
+        end do
+        do j=1,4  ! plot time by which second hits lag first hit
+          if(ic(1,j).ge.0)then
+            del=ic(1,j)-lt(1)+0.5
+            if(del.gt.50.)call hf1(j+40,del,1.)
+          end if
+        end do
+        if(m.eq.3)mout(mm)=mout(mm)+1
+c        write(6,1990)m,(ic(1,j),j=1,4)
+c        write(6,1990)mm,(ic(2,j),j=1,4)
+ 1990 format(i6,4i7)
+        if(itrig(1).eq.1)then
+          if(itrig(2).eq.1) itwo(1)=itwo(1)+1
+          if(itrig(3).eq.1) itwo(2)=itwo(2)+1
+          if(itrig(4).eq.1) itwo(3)=itwo(3)+1
+        end if
+        if(itrig(2).eq.1)then
+          if(itrig(3).eq.1) itwo(4)=itwo(4)+1
+          if(itrig(4).eq.1) itwo(5)=itwo(5)+1
+        end if
+        if(itrig(3).eq.1 .and.itrig(4).eq.1)itwo(6)=itwo(6)+1
+      end if
+      return
+      end
+cz-----------------------------------------
+
+c      subroutine hf1(l,a,b)
+c      return
+c dummy for subroutine to fill histograms
+c      end
