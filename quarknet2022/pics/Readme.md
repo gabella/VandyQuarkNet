@@ -9,7 +9,7 @@
 <img src="ImplPlanDianaFri_IMG_5504b.jpg" width=200 /> <img src="ImplPlanJamesFri_IMG_5505b.jpg" width=200 /> <img src="KenRoomWeds_IMG_5470b.jpg" width=200 /> 
 <br>
 <br>
-<img src="20220622_104004b.jpg" width=200 /> <img src="20220622_104012b.jpg" width=200 /> <img src="DianaWedsB.jpg" width=200 /> 
+<img src="DianaWedsB.jpg" height=200 /> <img src="BillJamesJenniferWedsB.jpg" width=200 /> <img src="JenniferWedsB.jpg" width=200 /> 
 <br>
-<img src="BillJamesJenniferWedsB.jpg" width=200 /> <img src="JenniferWedsB.jpg" width=200 /> <img src="BillJenniferJamesWedsB.jpg" width=200 /> 
+<img src="BillJenniferJamesWedsB.jpg" width=200 /> 
 <br>
