@@ -12,8 +12,9 @@ Frederick, Quasar Spectroscopy with SDSS<br>
 <br>
 **Tuesday - Thursday**<br>
 Science Videos<br>
-Shower flux<br>
-Muon decay/lifetime<br>
+Video analysis with Tracker  https://physlets.org/tracker/<br>
+Science Animation with Glowscript on VPython   https://www.glowscript.org/<br>
+Video editing with your favorite editor, or we can discuss options.
 <br>
 **Friday**<br>
 Led by Ken Cecire.<br>
