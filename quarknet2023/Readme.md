@@ -17,7 +17,9 @@ Science Animation with Glowscript on VPython   https://www.glowscript.org/<br>
 Video editing with your favorite editor, or we can discuss options.
 <br>
 **Friday**<br>
-Led by Ken Cecire.<br>
+Cosmic ray muon detectros and finishing up and presenting videos.<br>
+
+**Last Year agenda on quarknet.org**
 https://www.quarknet.org/content/vanderbilt-summer-meeting-2022 <br>
 <br>
 
