@@ -4,7 +4,7 @@ Vanderbilt University, SC6322 - Physics Wing of Stevenson Center<br>
 
 Agenda:<br>
 **Monday - Talks**<br>
-High Energy Physics<br>
+Julson, High Energy Physics<br>
 Gabella, LIGO and Gravitational Waves<br>
 Ruiz-Rocha, LISA and Gravitational Waves<br>
 Bell, ChatGPT<br>
