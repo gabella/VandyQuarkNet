@@ -3,7 +3,7 @@
 I put up two versions of each photo, one the original and the other a low resolution picture, 1024x768, 
 which has a "b" at the end of the name.
 
-![Group Monday](2023-06-19 13.28.25.jpgb)
+![Group Monday](quarknet2023/pics/2023-06-19 13.28.25b.jpg)
 
 LeRoy C, Sara F, Hannah B, Bill G, Diana G, Gayle D<br>
 
