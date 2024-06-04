@@ -1,5 +1,5 @@
-# Vanderbilt-QuarkNet Workshop 2023
-19-23 June 2023<br>
+# Vanderbilt-QuarkNet Workshop 2024
+17-21 June 2024<br>
 Vanderbilt University, SC6322 - Physics Wing of Stevenson Center<br>
 
 Agenda:<br>
